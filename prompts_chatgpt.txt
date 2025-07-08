@@ -1,0 +1,192 @@
+Quero instalar o Apache Kafka no WSL2 da minha máquina Windows. Depois que executá-lo e criar um programa Python que coloque uma mensagem "Viva o Fluminense" num tópico. E depois quero criar outro programa Python que leia esse tópico e imprima a mensagem na console. 
+O ChatGPT disse:
+
+Perfeito, vamos por partes. Aqui está um passo a passo direto, sem enrolação:
+1. Instalar Apache Kafka no WSL2 (Ubuntu)
+Pré-requisitos:
+
+    Java (Kafka precisa dele)
+
+sudo apt update
+sudo apt install openjdk-17-jdk -y
+
+Baixar Kafka:
+
+wget https://downloads.apache.org/kafka/3.7.0/kafka_2.13-3.7.0.tgz
+tar -xvzf kafka_2.13-3.7.0.tgz
+mv kafka_2.13-3.7.0 kafka
+cd kafka
+
+Iniciar Zookeeper:
+
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+    Deixe rodando esse terminal. Em outro terminal (ou aba):
+
+Iniciar o Kafka:
+
+bin/kafka-server-start.sh config/server.properties
+
+2. Criar um tópico chamado tricolor
+
+Em uma nova aba ou terminal:
+
+bin/kafka-topics.sh --create --topic tricolor --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+3. Instalar dependência do Python
+
+No WSL2 (ou até no Windows se for rodar por lá):
+
+pip install kafka-python
+
+4. Criar o produtor Python (produtor.py)
+
+from kafka import KafkaProducer
+
+producer = KafkaProducer(bootstrap_servers='localhost:9092')
+mensagem = "Viva o Fluminense"
+producer.send('tricolor', mensagem.encode('utf-8'))
+producer.flush()
+print("Mensagem enviada.")
+
+5. Criar o consumidor Python (consumidor.py)
+
+from kafka import KafkaConsumer
+
+consumer = KafkaConsumer(
+    'tricolor',
+    bootstrap_servers='localhost:9092',
+    auto_offset_reset='earliest',
+    enable_auto_commit=True,
+    group_id='meu-grupo'
+)
+
+print("Aguardando mensagens...")
+for msg in consumer:
+    print("Recebido:", msg.value.decode('utf-8'))
+    break  # Sai depois de receber a primeira
+
+6. Rodar tudo
+
+    Em um terminal: zookeeper
+
+    Em outro: kafka
+
+    Em outro: python consumidor.py
+
+    Em outro: python produtor.py
+
+Resultado esperado:
+
+Recebido: Viva o Fluminense
+
+Se quiser automatizar tudo com tmux, screen ou systemd depois, posso ajudar também. Quer que empacote isso em um script bash?
+Você disse:
+Já tenho o Java 8 instalado. Posso usá-lo ao invés de instalar o Java 17?
+O ChatGPT disse:
+
+Sim, pode usar o Java 8. O Kafka 3.x ainda é compatível com o Java 8, mas com algumas ressalvas:
+⚠️ Avisos sobre usar Java 8:
+
+    Kafka 3.0 até 3.4: suporte oficial ao Java 8.
+
+    Kafka 3.5+ (incluindo 3.7): funciona com Java 8, mas já está em processo de descontinuação do suporte. Eles recomendam Java 11+.
+
+    Zookeeper (necessário pro Kafka): roda tranquilo com Java 8.
+
+Resumindo:
+
+Se você quer só testar localmente e não se importa com possíveis mensagens de depreciação, pode seguir com Java 8.
+✅ Dica prática:
+
+Antes de rodar o Kafka com Java 8, só garanta que o JAVA_HOME está configurado:
+
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+
+Você pode colocar isso no .bashrc se quiser persistência.
+
+Se der erro com Unsupported major.minor version, aí sim vale subir para Java 11+.
+
+Quer que eu adapte o script de instalação para Kafka 3.4 (que tem suporte garantido ao Java 8) só pra garantir?
+Você disse:
+wget https://downloads.apache.org/kafka/3.7.0/kafka_2.13-3.7.0.tgz
+--2025-06-12 10:37:41--  https://downloads.apache.org/kafka/3.7.0/kafka_2.13-3.7.0.tgz
+Resolving downloads.apache.org (downloads.apache.org)... 135.181.214.104, 88.99.208.237, 2a01:4f9:3a:2c57::2, ...
+Connecting to downloads.apache.org (downloads.apache.org)|135.181.214.104|:443... connected.
+HTTP request sent, awaiting response... 404 Not Found
+O ChatGPT disse:
+
+O problema é que o Kafka 3.7.0 ainda está no arquivo de arquivamento, mas não no ramo downloads oficiais — por isso seu wget resultou em 404. Duas soluções rápidas:
+🧩 Opção 1: Baixar uma versão mais recente com mirror oficial
+
+A versão 3.9.1 é a mais recente estável com suporte a Java 8 (na prática). Use:
+
+wget https://dlcdn.apache.org/kafka/kafka_2.13-3.9.1.tgz
+tar -xvzf kafka_2.13-3.9.1.tgz
+mv kafka_2.13-3.9.1 kafka
+cd kafka
+
+Essa versão inclui correções importantes e mantém compatibilidade com Java 8
+kineticedge.io+15kafka.apache.org+15archive.apache.org+15
+.
+🕰️ Opção 2: Usar 3.7.0 direto do arquivo Apache
+
+Se você realmente quer a 3.7.0, segue:
+
+wget https://archive.apache.org/dist/kafka/3.7.0/kafka_2.13-3.7.0.tgz
+tar -xvzf kafka_2.13-3.7.0.tgz
+mv kafka_2.13-3.7.0 kafka
+cd kafka
+
+Esse é o mesmo arquivo que tentou baixar, mas direto do archive .
+✅ Resumo para você decidir “na lata”:
+Versão	Mirror oficial	Compatível Java 8	Atualizações
+3.9.1	Sim (dlcdn)	Sim	Correções e melhorias recentes
+3.7.0	Arquivo (archive.apache.org)	Sim	Mais datada, sem melhorias recentes
+Próximos passos:
+
+Depois de extrair a pasta kafka, siga normalmente:
+
+    Inicie o ZooKeeper 🔹
+
+    Em outro terminal, inicie o Kafka
+
+    Crie o tópico “tricolor”
+
+    Execute o produtor e o consumidor Python conforme já fizemos
+
+Me manda o terminal com o erro (se houver) e ajustamos na hora.
+Você disse:
+Agora que o arquivo .zip contendo um projeto Java (versão 8) com Maven que também insira uma mensagem nesse tópico "tricolor" a mensagem "Vai ganhar o mundial.". E que também consuma o conteúdo desse tópico. 
+O ChatGPT disse:
+
+Aqui está o arquivo .zip com um projeto Java 8 usando Maven que:
+
+    Envia a mensagem "Vai ganhar o mundial." para o tópico tricolor.
+
+    Lê e imprime essa mensagem no console.
+
+🔗 Clique aqui para baixar o projeto KafkaJavaProducerConsumer.zip
+✅ Como usar:
+
+    Descompacte o projeto:
+
+unzip KafkaJavaProducerConsumer.zip
+cd KafkaJavaProducerConsumer
+
+Compile com Maven:
+
+mvn compile
+
+Execute o produtor:
+
+mvn exec:java -Dexec.mainClass="com.exemplo.kafka.Produtor"
+
+Execute o consumidor:
+
+    mvn exec:java -Dexec.mainClass="com.exemplo.kafka.Consumidor"
+
+    Obs: Para rodar via exec:java, você pode adicionar o plugin do exec-maven-plugin no pom.xml, se quiser que eu adicione isso no ZIP, me avise.
+
+Se quiser também o equivalente em Python rodando lado a lado com esse Java, posso montar num segundo pacote. 
